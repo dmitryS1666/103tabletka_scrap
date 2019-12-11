@@ -10,15 +10,17 @@ def scraper
   unparsed_page = HTTParty.get(url)
   parsed_page = Nokogiri::HTML(unparsed_page)
   tablets = Array.new
-  tablet_listings = parsed_page.css('')
+  tablet_listings = parsed_page.css('div.abc-list')
+  byebug # точка останова
   tablet_listings.each do |tablet_listing|
     tablet = {
       title: tablet_listing.css('').text,
-      desc: tablet_listing.css('').text
+      url: tablet_listing.css('').attributes['href'].value
     }
     tablets << tablet
   end
-  byebug # точка останова
+  puts 'tablets', tablets
+  #byebug # точка останова
 end
 
 scraper
