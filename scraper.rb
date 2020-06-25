@@ -1,14 +1,14 @@
-# https://www.youtube.com/watch?v=b3CLEUBdWwQ 14:37
-# https://blog.devcenter.co/web-scraping-with-ruby-on-rails-67c5d3d133ff
-
+require 'watir'
 require 'nokogiri'
 require 'httparty'
 require 'byebug'
 require "csv"
 require 'mechanize'
 
-# необходимо для получения корректной кодировки при запуске скрипта на WINDOWS 10
-if (Gem.win_platform?)
+TIME_NOW = Time.now.getutc.to_i
+p TIME_NOW
+
+if Gem.win_platform?
   Encoding.default_external = Encoding.find(Encoding.locale_charmap)
   Encoding.default_internal = __ENCODING__
 
@@ -17,29 +17,26 @@ if (Gem.win_platform?)
   end
 end
 
-def scraper
+def main_categories
   CSV.open("main_category.csv", "wb") do |csv|
     tablets = Array.new
-    csv << [Time.now.strftime("%Y-%d-%m %H:%M:%S")]
-    csv << %w(id title url desc)
     url = 'https://apteka.103.by/lekarstva-minsk/'
     unparsed_page = HTTParty.get(url)
     parsed_page = Nokogiri::HTML(unparsed_page)
     tablet_listings = parsed_page.css('div.abc-list').css('div.col')
     tablet_listings.each do |tablet_listing|
       tablet_listing.css('ul.list').css('li').each_with_index do |listing, index|
-        # byebug # точка останова
         csv << [
-            index + 1,
+            index + Time.now.strftime("%s").to_i,
             listing.css('a')[0].text,
             listing.css('a')[0].attributes['href'].value,
-            listing.css('span.mnn-description')[0].text.include?('(~)') ? 'nil' : listing.css('span.mnn-description')[0].text.gsub(/\(|\) /, '')
+            Time.now.strftime("%Y-%d-%m %H:%M:%S")
         ]
         tablet = {
-            id: index + 1,
+            id: index + Time.now.strftime("%s").to_i,
             title: listing.css('a')[0].text,
             url: listing.css('a')[0].attributes['href'].value,
-            desc: listing.css('span.mnn-description')[0].text.include?('(~)') ? nil : listing.css('span.mnn-description')[0].text.gsub(/\(|\) /, '')
+            updated_at: Time.now.strftime("%Y-%d-%m %H:%M:%S")
         }
         tablets << tablet
       end
@@ -50,39 +47,55 @@ end
 
 def get_details(array)
   agent = Mechanize.new
-  CSV.open("description.csv", "wb") do |csv|
-    desc = Array.new
-    csv << [Time.now.strftime("%Y-%d-%m %H:%M:%S")]
-    csv << %w(title url desc)
-    array.each do |el|
-      # unparsed_page = HTTParty.get(el[:url])
-      page = agent.get(el[:url])
-      # parsed_page = Nokogiri::HTML(unparsed_page)
-      # desc_parsing = parsed_page.css('a.drugsForm__header-instruction')
-      desc_parsing = page.css('a.drugsForm__header-instruction')
-      puts desc_parsing
-      byebug # точка останова
+  CSV.open("description_short_#{TIME_NOW}.csv", "wb") do |csv|
+    browser = Watir::Browser.new :chrome
+    array.each_with_index do |el, index|
+      next if index < 3917 || index == 3917
+      puts "index: #{index}"
+      url = el[:url]
+      browser.goto url
+      sleep(4)
+      browser.link(text: "Инструкция").when_present.click
+      sleep(1)
 
-      # desc_parsing.css('ul.list').css('li').each_with_index do |listing, index|
-      #   # byebug # точка останова
-      #   csv << [
-      #       index + 1,
-      #       listing.css('a')[0].text,
-      #       listing.css('a')[0].attributes['href'].value,
-      #       listing.css('span.mnn-description')[0].text.include?('(~)') ? 'nil' : listing.css('span.mnn-description')[0].text.gsub(/\(|\) /, '')
-      #   ]
-      #   tablet = {
-      #       id: index + 1,
-      #       title: listing.css('a')[0].text,
-      #       url: listing.css('a')[0].attributes['href'].value,
-      #       desc: listing.css('span.mnn-description')[0].text.include?('(~)') ? nil : listing.css('span.mnn-description')[0].text.gsub(/\(|\) /, '')
-      #   }
-      #   desc << tablet
-      # end
+      main_div = browser.div(class: /^instructionPopup__drugInfo$/)
+      main_div.divs.each do |child|
+        if child.h2.present? && child.span.present?
+          csv << [ el[:id], el[:title], child.h2.text + child.span.text, Time.now.strftime("%Y-%d-%m %H:%M:%S") ]
+        end
+      end
+
+      additional_div = browser.div(class: /^instructionPopup__description$/)
+      if additional_div.ul.present? && additional_div.ul.length > 0
+        CSV.open("description_additional_#{TIME_NOW}.csv", "wb") do |csv|
+          additional_div.ul.each_with_index do |li, i|
+            if li.label(for: 'toggleInstructionItem-'+i.to_s).present?
+              li.label(for: 'toggleInstructionItem-'+i.to_s).click
+              sleep(2)
+              csv << [el[:id], el[:title], li.h2.text + ':' + li.div(class: /^instructionPopup__itemContent$/).text.gsub('\n', ' '), Time.now.strftime("%Y-%d-%m %H:%M:%S")]
+            end
+          end
+        end
+      end
+      sleep(rand(0..3))
     end
   end
 end
 
-result = scraper
-result = get_details(result)
-p result.length
+CSV.open("main_category.csv", "w") do |csv|
+  csv << [Time.now.strftime("%Y-%d-%m %H:%M:%S")]
+  csv << %w(id title url updated_at)
+end
+
+CSV.open("description_short_#{TIME_NOW}.csv", "w") do |csv|
+  csv << [Time.now.strftime("%Y-%d-%m %H:%M:%S")]
+  csv << %w(product_id product_title params updated_at)
+end
+
+CSV.open("description_additional_#{TIME_NOW}.csv", "w") do |csv|
+  csv << [Time.now.strftime("%Y-%d-%m %H:%M:%S")]
+  csv << %w(product_id product_title additional_params updated_at)
+end
+
+result = main_categories
+get_details(result)
