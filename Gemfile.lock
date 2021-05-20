@@ -23,14 +23,16 @@ GEM
     mime-types (3.3.1)
       mime-types-data (~> 3.2015)
     mime-types-data (3.2020.0512)
-    mini_portile2 (2.4.0)
     multi_xml (0.6.0)
     net-http-digest_auth (1.4.1)
     net-http-persistent (4.0.0)
       connection_pool (~> 2.2)
-    nokogiri (1.10.9-x64-mingw32)
-      mini_portile2 (~> 2.4.0)
+    nokogiri (1.11.4-x64-mingw32)
+      racc (~> 1.4)
+    nokogiri (1.11.4-x86_64-linux)
+      racc (~> 1.4)
     ntlm-http (0.1.1)
+    racc (1.5.2)
     regexp_parser (1.7.0)
     rubyzip (2.3.0)
     selenium-webdriver (3.142.7)
@@ -38,6 +40,7 @@ GEM
       rubyzip (>= 1.2.2)
     unf (0.1.4)
       unf_ext
+    unf_ext (0.0.7.7)
     unf_ext (0.0.7.7-x64-mingw32)
     watir (6.16.5)
       regexp_parser (~> 1.2)
@@ -46,6 +49,7 @@ GEM
 
 PLATFORMS
   x64-mingw32
+  x86_64-linux
 
 DEPENDENCIES
   byebug
