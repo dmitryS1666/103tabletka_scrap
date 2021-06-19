@@ -44,9 +44,9 @@ def med_centre_short
                   li.div(class: 'bar js-photo-bar').attribute_value("data-photos") : ""
 
       if li.div(class: 'service-description').div(class: 'address-info').location.x != nil
-        desc = li.div(class: 'service-description').div(class: 'address-info').div(class: 'address-info-features invisible-links gray _fade').location.x != nil ?
+        desc = li.div(class: 'service-description').div(class: 'address-info').div(class: 'address-info-features invisible-links gray _fade').present? ?
                li.div(class: 'service-description').div(class: 'address-info').div(class: 'address-info-features invisible-links gray _fade').text : ""
-        address = li.div(class: 'service-description').div(class: 'address-info').address(class: 'invisible-links _fade').location.x != nil ?
+        address = li.div(class: 'service-description').div(class: 'address-info').address(class: 'invisible-links _fade').present? ?
                   li.div(class: 'service-description').div(class: 'address-info').address(class: 'invisible-links _fade').text : ""
       else
         desc, address = ""
